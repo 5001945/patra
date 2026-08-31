@@ -1,0 +1,422 @@
+# Commands run while building the MinerU PDF transformation prototype.
+# Format: command, followed by a short note when useful.
+
+rg --files
+# Inspect the current workspace before adding the project files.
+
+git status --short
+# Check for existing user changes; failed inside sandbox with a bwrap namespace error.
+
+git status --short
+# Retried outside the sandbox; confirmed this directory is not a git repository.
+
+conda run -n patra python -c "import sys; print(sys.version); import fitz; print('pymupdf', fitz.VersionBind)"
+# Check Python version and whether PyMuPDF is installed; PyMuPDF was missing.
+
+conda run -n patra python -m pip install PyMuPDF
+# Install PyMuPDF for PDF parsing, rich text span extraction, and PDF rendering.
+
+conda run -n patra python -c "import fitz, inspect; print(fitz.VersionBind); print(hasattr(fitz.Page, 'insert_htmlbox')); print(inspect.signature(fitz.Page.insert_htmlbox) if hasattr(fitz.Page, 'insert_htmlbox') else 'no')"
+# Verify PyMuPDF version and rich HTML insertion support.
+
+conda run -n patra python -c "from pathlib import Path; p=Path('patra_mineru_pipeline/pyproject.toml'); s=p.read_text(); add='\\n[tool.setuptools.packages.find]\\nwhere = [\\\"src\\\"]\\n'; p.write_text(s if '[tool.setuptools.packages.find]' in s else s + add)"
+# Add setuptools src-layout package discovery after apply_patch hit a sandbox error.
+
+conda run -n patra python -c "from pathlib import Path; p=Path('patra_mineru_pipeline/src/patra_mineru/protect.py'); s=p.read_text(); s=s.replace('f\\\"<KEEP_EQ_{len(mapping)} />\\\"', 'f\\\"<KEEP_EQ_{len(mapping)}/>\\\"').replace('f\\\"<KEEP_TERM_{len(mapping)} />\\\"', 'f\\\"<KEEP_TERM_{len(mapping)}/>\\\"'); p.write_text(s)"
+# Normalize placeholder tokens to compact self-closing forms.
+
+conda run -n patra python -m pip install -e patra_mineru_pipeline
+# Install the new package in editable mode inside the patra conda environment.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run the unit and miniature end-to-end tests.
+
+conda run -n patra patra-mineru --help
+# Verify the CLI entrypoint.
+
+conda run -n patra python -c "from pathlib import Path; Path('commands.txt').write_text(..., encoding='utf-8')"
+# Attempt to rewrite this command log; failed due nested shell quoting.
+
+python3 - <<'PY'
+from pathlib import Path
+Path('commands.txt').write_text(..., encoding='utf-8')
+PY
+# Attempt to rewrite this command log with a heredoc; failed inside sandbox with bwrap.
+
+python3 - <<'PY'
+from pathlib import Path
+Path('commands.txt').write_text(..., encoding='utf-8')
+PY
+# Retried outside the sandbox, but the heredoc delimiter conflicted with logged content and failed.
+
+python3 - <<'<unique heredoc>'
+from pathlib import Path
+Path('commands.txt').write_text(..., encoding='utf-8')
+<unique heredoc>
+# Retried outside the sandbox with unique heredoc delimiters; earlier exact-token attempts conflicted with logged content.
+
+python3 - <<'<unique heredoc>'
+from pathlib import Path
+Path('commands.txt').write_text(..., encoding='utf-8')
+<unique heredoc>
+# Final successful rewrite of this command log; the exact delimiter is intentionally abbreviated to avoid self-conflict.
+
+find runs/example/mineru -maxdepth 5 -type f -print
+# Inspect MinerU output files after prepare could not find *_content_list.json.
+
+find runs/example -maxdepth 5 -type f -print
+# Inspect nearby run files in case MinerU wrote to a nested or sibling directory.
+
+find runs/example/mineru -maxdepth 5 -type f -print
+# Retried outside the sandbox; runs/example/mineru did not exist.
+
+find runs/example -maxdepth 5 -type f -print
+# Retried outside the sandbox; runs/example did not exist.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Re-run tests after making prepare accept clearer MinerU output paths.
+
+python3 - <<'PY'
+from pathlib import Path
+p = Path('patra_mineru_pipeline/src/patra_mineru/ir_builder.py')
+...replace find_mineru_file with a more helpful implementation...
+PY
+# Update prepare path handling after apply_patch failed with bwrap.
+
+rg -n "def build_payload|rich_text|payload" patra_mineru_pipeline/src/patra_mineru patra_mineru_pipeline/tests
+# Inspect payload construction before reducing LLM request size.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Re-run tests after compacting the LLM payload.
+
+python3 - <<'PY'
+from pathlib import Path
+...rewrite patra_mineru_pipeline/src/patra_mineru/payload.py for compact LLM payload...
+PY
+# Remove renderer-only data and full rich_text spans from the LLM request payload.
+
+rg -n "def extract_rich_spans|RichSpan|style_hints|build_payload" patra_mineru_pipeline/src/patra_mineru patra_mineru_pipeline/tests
+# Inspect rich span extraction and payload code before merging same-style runs.
+
+python3 - <<'PY'
+from pathlib import Path
+...rewrite style.py to merge adjacent RichSpan values with the same font/style/color/size...
+PY
+# Merge same-style PDF spans so rich_text is not word-sized.
+
+python3 - <<'PY'
+from pathlib import Path
+...rewrite payload.py to include merged rich_text again, without renderer-only metadata...
+PY
+# Restore rich_text in the LLM payload, relying on merged spans for size control.
+
+python3 - <<'PY'
+from pathlib import Path
+...add a unit test for merge_rich_spans and compact rich_text payload...
+PY
+# Add regression coverage for same-style rich span merging.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after rich span merge and payload changes.
+
+python3 - <<'PY'
+from pathlib import Path
+...adjust merge_rich_spans test gap so it exercises explicit space insertion...
+PY
+# Fix the regression test expectation after first test run showed the gap was below the space threshold.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Re-run after fixing the span merge regression test; passed.
+
+rg -n "between measurement overhead and performance gain" runs/example/document_ir.json
+# Locate the duplicated sentence in the generated DocumentIR.
+
+sed -n "1280,1365p" runs/example/document_ir.json
+# Inspect the block around the reported duplicated rich_text line.
+
+conda run -n patra python - <<'PY'
+...print page span rectangles around b_00029/b_00030 and their MinerU block rectangles...
+PY
+# Diagnose why the previous block last line overlaps the next block rich_text extraction.
+
+conda run -n patra python -c "...print page span rectangles around b_00029/b_00030..."
+# Retry the coordinate diagnostic with python -c because conda run did not pass heredoc stdin usefully.
+
+python3 - <<'PY'
+from pathlib import Path
+...update style.py overlap filtering to require span center in block or >=55% span-area overlap...
+PY
+# Prevent neighboring MinerU blocks from stealing a line that only barely overlaps the next bbox.
+
+conda run -n patra python -c "...extract rich spans for b_00030 after overlap-filter fix..."
+# Verify b_00030 rich_text no longer starts with the previous block sentence.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after the overlap-filter fix.
+
+conda run -n patra patra-mineru prepare --pdf example.pdf --mineru-output runs/example/mineru --ir-out runs/example/document_ir.json --payload-out runs/example/llm_payload.json
+# Regenerate DocumentIR and LLM payload after fixing rich_text bbox overlap filtering.
+
+rg -n "between measurement overhead and performance gain" runs/example/document_ir.json
+# Confirm the sentence only appears in the correct block after regeneration.
+
+sed -n "1,220p" patra_mineru_pipeline/src/patra_mineru/style.py
+# Inspect current style extraction before adding rich_text validation and fallback.
+
+sed -n "1,180p" patra_mineru_pipeline/tests/test_pipeline.py
+# Inspect tests before adding coverage for validation fallback.
+
+python3 - <<'PY'
+from pathlib import Path
+...rewrite style.py with rich_text/source_text validation, relaxed retry, and plain fallback...
+PY
+# Add validation so strict overlap false negatives can retry while false positives fall back safely.
+
+python3 - <<'PY'
+from pathlib import Path
+...add tests for rich_text validation rejecting extra neighboring text...
+PY
+# Add regression coverage for false-positive rich_text validation.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after adding validation fallback.
+
+conda run -n patra patra-mineru prepare --pdf example.pdf --mineru-output runs/example/mineru --ir-out runs/example/document_ir.json --payload-out runs/example/llm_payload.json
+# Regenerate IR and payload with rich_text validation fallback enabled.
+
+conda run -n patra python -c "...check b_00030 rich_text after validation fallback..."
+# Verify the previous neighboring-line duplication remains fixed.
+
+sed -n "1,180p" patra_mineru_pipeline/src/patra_mineru/cli.py
+# Inspect CLI before adding the translate command.
+
+sed -n "1,170p" patra_mineru_pipeline/src/patra_mineru/payload.py
+# Inspect payload/system prompt before wiring the OpenAI-compatible request.
+
+python3 - <<'PY'
+from pathlib import Path
+...add patra_mineru_pipeline/src/patra_mineru/llm_client.py for OpenAI-compatible chat completions...
+PY
+# Implement translate HTTP client without adding dependencies.
+
+python3 - <<'PY'
+from pathlib import Path
+...update cli.py with patra-mineru translate arguments and handler...
+PY
+# Wire the translate subcommand into the CLI.
+
+python3 - <<'PY'
+from pathlib import Path
+...add tests for build_chat_request and extract_json_content...
+PY
+# Add translate client unit tests without calling a real server.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after implementing translate.
+
+conda run -n patra patra-mineru translate --help
+# Verify the translate CLI entrypoint and arguments.
+
+python3 - <<'PY'
+from pathlib import Path
+...update README with translate command and system prompt guidance...
+PY
+# Document translate usage and how the system prompt is configured.
+
+conda run -n patra patra-mineru translate --payload runs/example/llm_payload.json --output runs/example/response.json --base-url http://localhost:8000/v1 --model your-model --dry-run-request-out runs/example/chat_request.json
+# Verify translate can build the OpenAI-compatible chat request without calling a server.
+
+rg --files patra_mineru_pipeline
+# Inspect existing project files before adding the local PDF overlay web app.
+
+conda run -n patra python -c "import fastapi, uvicorn; print('fastapi ok')"
+# Check whether the patra environment already has FastAPI and Uvicorn.
+
+conda run -n patra python -c "import multipart; print('multipart ok')"
+# Check whether FastAPI upload support is installed.
+
+mkdir -p patra_mineru_pipeline/src/patra_mineru/web
+# Create the static asset directory for the local PDF overlay web app.
+
+python3 - <<'PY'
+from pathlib import Path
+...write web_app.py, web/index.html, web/app.js, web/styles.css...
+PY
+# Add FastAPI backend and static PDF.js frontend.
+
+python3 - <<'PY'
+from pathlib import Path
+...update pyproject.toml with web dependencies, package data, and patra-mineru-web script...
+PY
+# Make the local web app installable and runnable.
+
+conda run -n patra python -m pip install -e patra_mineru_pipeline
+# Refresh editable install so the patra-mineru-web script is available.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after adding the web app.
+
+conda run -n patra python -c "from patra_mineru.web_app import app; print(app.title)"
+# Verify the FastAPI app imports successfully.
+
+conda run -n patra patra-mineru-web
+# Start the local web app server for manual use.
+
+python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8765/').status)"
+# Verify the local web app responds on port 8765.
+
+# No terminal command was run for creating CONTEXT.md and AGENTS.md; both files were written via apply_patch.
+
+python3 - <<'PY'
+from pathlib import Path
+Path('commands.txt').open('a').write(...)
+PY
+# Append this note after apply_patch failed to update commands.txt with a bwrap error.
+
+conda run -n patra python -c "import patra_mineru, sys; print(patra_mineru.__file__)"; conda run -n patra which mineru
+# Confirm the package and the MinerU CLI are both installed in the patra env.
+
+conda run -n patra python -c "<inline script reading runs/example2/raw_response.json>"
+# Diagnose ValueError: Model JSON must contain a blocks list. Qwen3-32B-AWQ returned all
+# 20 blocks correctly but nested them under response_schema and prefixed a <think> block.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after hardening extract_json_content; 9 tests OK.
+
+conda run -n patra python -c "<inline script calling extract_json_content on raw_response.json>"
+# Verify the fix on the real failed response and salvage runs/example2/response.json (20 blocks).
+
+conda run -n patra python -c "<inline script comparing hangul counts in response.json text vs rich_text>"
+# Diagnose untranslated Evaluation/Conclusion in rendered.pdf. Found the model translated
+# `text` but echoed the English source into `rich_text` for b_00028/29/30/32, and the
+# renderer prefers rich_text, so it silently drew the source.
+
+conda run -n patra python -c "<inline script rendering rendered.pdf pages to PNG>"
+# Visually confirm the untranslated right column before and after the fix.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after adding the rich_text trust check; 11 tests OK.
+
+conda run -n patra patra-mineru render --pdf example.pdf --ir runs/example2/document_ir.json \
+  --response runs/example2/response.json --output-pdf runs/example2/rendered.pdf \
+  --output-html runs/example2/rendered.html --debug-boxes
+# Re-render with the fix. Now emits 10 warnings that were previously silent, and page 1
+# hangul count rose from 425 to 968.
+
+conda run -n patra python -c "<inline script testing text-align:justify in insert_htmlbox>"
+# Confirm PyMuPDF 1.28 honours justified alignment before adopting it for Korean text.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after heading preservation, sentence-survival detection, no-forced-breaks
+# rendering, justified alignment, and cross-block continuation hints; 17 tests OK.
+
+conda run -n patra patra-mineru prepare --pdf example.pdf --mineru-output runs/example2/mineru \
+  --ir-out runs/example2/document_ir.json --payload-out runs/example2/llm_payload.json \
+  --protected-terms attention,Transformer,softmax
+# Rebuild IR and payload with the new defaults. Translatable blocks dropped 20 -> 15
+# because 6 headings are now kept in the source language; one continuation pair was
+# detected (b_00011 -> b_00019, a sentence split across a column boundary).
+
+conda run -n patra patra-mineru render --pdf example.pdf --ir runs/example2/document_ir.json \
+  --response runs/example2/response.json --output-pdf runs/example2/rendered.pdf \
+  --output-html runs/example2/rendered.html
+# Re-render. Headings now keep their original small-caps typography, paragraphs are
+# justified with no forced mid-sentence breaks, and b_00023's untranslated English
+# sentence is reported instead of passing silently.
+
+conda run -n patra python -c "import mineru,os;print(os.path.dirname(mineru.__file__))"; cat .../mineru*.dist-info/entry_points.txt
+# Locate the installed MinerU and its console scripts. Found 3.4.1, whose CLI differs
+# from the 2.x flags the wrapper assumed.
+
+grep -n "click.option" -A 6 .../mineru/cli/client.py; cat .../mineru/cli/backend_options.py
+# Read the real MinerU 3.4.1 options instead of guessing: backends are pipeline,
+# vlm-engine, hybrid-engine, vlm-http-client, hybrid-http-client; -u/--url for the VLM
+# server, --api-url for the mineru-api service, -l/--lang defaulting to 'ch'.
+
+grep -rn "MINERU_DEVICE_MODE" .../mineru/utils/config_reader.py
+# Confirm how MinerU selects the device before replacing the hardcoded CPU setting.
+
+conda run -n patra python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after making the MinerU backend, device, and server options configurable; 20 OK.
+
+conda run -n patra patra-mineru parse --help
+# Verify the new parse flags. This only exercises argparse and does not invoke MinerU.
+
+grep -n "run_orchestrated_cli" -A 60 .../patra2/.../mineru/cli/client.py
+# Confirm why every parse is slow to start: with api_url=None the CLI spins up a
+# throwaway LocalAPIServer per run and stops it in the finally block.
+
+cat .../patra2/.../mineru/cli/public_http_client_policy.py
+# Check the mineru-api bind policy. On 0.0.0.0 it returns HTTP 400 for *-http-client
+# backends and server_url unless --allow-public-http-client is passed, so the earlier
+# "--host 0.0.0.0" advice in README/CONTEXT was wrong for this setup and was corrected.
+
+PATRA_MINERU_API_URL=http://127.0.0.1:50021 conda run -n patra2 python -c "<build_parser + build_mineru_command>"
+# Verify the env var becomes the --api-url default, so pipeline.sh needs no edit.
+
+conda run -n patra2 python -m unittest discover -s patra_mineru_pipeline/tests
+# Full suite in patra2 after the api-url composition test; 21 OK.
+
+conda run -n patra2 python -c "<inline script auditing empty-text blocks in runs/1786020624.040>"
+# Investigate why b_00026 was never translated. It is a MinerU 3.x `list` block whose
+# content lives in a `list_items` array, so _item_text returned "" and is_translatable
+# dropped it. The same audit found 9 `chart` blocks whose captions are also unread.
+
+conda run -n patra2 python -m unittest discover -s patra_mineru_pipeline/tests
+# Run tests after adding the list_items branch; 23 OK.
+
+conda run -n patra2 python -c "<inline script rebuilding the IR for that run into memory>"
+# Verify the fix on the real run without touching its artifacts: b_00026 now yields
+# 1217 chars and 4 rich spans, and payload blocks go 18 -> 19 with nothing dropped.
+
+python3 -c "<inline script dumping b_00011 and the raw content_list of runs/1786021447.011>"
+# Diagnose the two-box paragraph. MinerU item 11 holds the whole cross-page paragraph
+# with only the page-0 bbox; item 19 is the page-1 leftover rectangle with "text": "".
+
+conda run -n patra2 python -c "<inline script: page.get_text('text', clip=block_rect(...))>"
+# Confirm the split: the page-0 rect holds the first half, the page-1 rect the second.
+
+conda run -n patra2 python -c "<inline script placing a Story into each rect at several scales>"
+# Find why the first flow attempt still crammed everything into box 0: Story.place()
+# does not advance the story, so every rect was measured from the start of the text.
+# Adding story.draw(None) after each place fixed the scale search.
+
+conda run -n patra2 python -c "<inline script rebuilding the IR and re-rendering into the scratchpad>"
+# Verify on the real run without touching runs/1786021447.011: b_00011 now has two
+# regions, 4 rich spans, and the Korean tail lands in the page-1 rectangle.
+
+conda run -n patra2 python -m unittest discover -s patra_mineru_pipeline/tests
+# Full suite after the region/flow changes; 25 OK.
+
+python3 -c "<inline script inspecting runs/1786024296.450/raw_response.json>"
+# Diagnose the JSONDecodeError. finish_reason=length: prompt_tokens 37386 of a 40960
+# context left only 3574 completion tokens, of which 2785 chars went to <think>; the
+# model emitted 9 of 100 blocks before being cut off.
+
+python3 -c "<inline script measuring llm_payload.json>"
+# Size the payload: 100 blocks, 136235 block-JSON chars, max block 4509 chars.
+# Confirms one request per document cannot work and fixes the batch defaults.
+
+conda run -n patra2 python -c "from patra_mineru.payload import split_payload; ..."
+# Check the defaults on the real payload: 13 batches, 7-8 blocks each, max 11716
+# chars (~3.2k prompt tokens), block ids and order preserved.
+
+conda run -n patra2 patra-mineru translate ... --no-think --dry-run-request-out ...
+# Dry run only, no server call: writes a list of 13 request bodies and confirms
+# chat_template_kwargs={"enable_thinking": false} is attached.
+
+conda run -n patra2 python -m unittest discover -s patra_mineru_pipeline/tests
+# Full suite after batching, truncation detection, and --no-think; 29 OK.
+
+python3 -c "<inline script inspecting runs/1786025241.103/raw_response.json>"
+# Diagnose the "Extra data" decode error on batch 2/13. Both batches have
+# finish_reason=stop, so nothing was truncated: the model repeated the closing "]}"
+# after every block, giving {"blocks":[B1]},B2]},B3]}... All 8 blocks were present
+# and fully translated; only the envelope was malformed.
+
+conda run -n patra2 python -c "<extract_json_content over both saved raw responses>"
+# Verify salvage_blocks on the real file: batch 1 parses normally, batch 2 recovers
+# all 8 blocks with rich_text intact and reports the recovery note.
+
+conda run -n patra2 python -m unittest discover -s patra_mineru_pipeline/tests
+# Full suite after salvage, missing-block warnings, and the stricter envelope wording; 32 OK.

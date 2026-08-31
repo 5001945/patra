@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Patra PDF Section Translator</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-row">
+        <div>
+          <h1>PDF Section Translator</h1>
+          <p>MinerU blocks over PDF.js</p>
+        </div>
+        <span id="statusPill" class="status-pill idle">idle</span>
+      </div>
+
+      <section id="dropZone" class="drop-zone" tabindex="0">
+        <input id="pdfInput" type="file" accept="application/pdf" hidden />
+        <div class="drop-icon">PDF</div>
+        <strong>PDF를 드래그하거나 클릭</strong>
+        <span>업로드 후 block overlay를 만듭니다.</span>
+      </section>
+
+      <section class="settings-panel">
+        <label class="check-row">
+          <input id="runParse" type="checkbox" checked />
+          <span>업로드 후 MinerU parse 실행</span>
+        </label>
+        <label>
+          <span>기존 MinerU output 경로</span>
+          <input id="mineruOutput" type="text" placeholder="예: runs/example/mineru" />
+        </label>
+        <label>
+          <span>보호할 용어</span>
+          <input id="protectedTerms" type="text" value="attention,Transformer,softmax" />
+        </label>
+        <label>
+          <span>작업 지시</span>
+          <textarea id="taskInput" rows="4">Translate the academic-paper text into Korean. Rewrite every sentence with natural Korean sentence structure and Korean predicates. Never leave a sentence in the source language, and never keep source word order with only Korean particles attached. Keep these in English: protected placeholders, section headings, author names, proper nouns, model, dataset and hardware names, citations, units, and the technical terms that Korean papers conventionally write in English.</textarea>
+        </label>
+      </section>
+
+      <section class="settings-panel llm-settings">
+        <h2>LLM server</h2>
+        <label>
+          <span>Base URL</span>
+          <input id="baseUrl" type="text" value="http://localhost:8000/v1" />
+        </label>
+        <label>
+          <span>Model</span>
+          <input id="modelName" type="text" placeholder="your-model" />
+        </label>
+        <label>
+          <span>API key</span>
+          <input id="apiKey" type="password" placeholder="비우면 서버 env/dummy 사용" />
+        </label>
+        <label class="check-row">
+          <input id="jsonMode" type="checkbox" />
+          <span>JSON mode 사용</span>
+        </label>
+      </section>
+    </aside>
+
+    <section class="viewer-shell">
+      <div class="viewer-toolbar">
+        <div>
+          <strong id="docTitle">PDF 없음</strong>
+          <span id="docMeta">업로드하면 여기에 페이지가 렌더링됩니다.</span>
+        </div>
+        <div class="toolbar-actions">
+          <button id="zoomOut" type="button" aria-label="Zoom out">-</button>
+          <span id="zoomLabel">100%</span>
+          <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
+        </div>
+      </div>
+      <div id="viewer" class="viewer empty-state">
+        <div class="empty-message">PDF를 넣으면 원본 위에 섹션/block 네모가 표시됩니다.</div>
+      </div>
+    </section>
+
+    <aside class="detail-panel">
+      <div class="panel-heading">
+        <h2>Selected block</h2>
+        <button id="closeDetail" type="button" aria-label="Close detail">×</button>
+      </div>
+      <div id="detailEmpty" class="detail-empty">네모를 클릭하면 원문, crop, 번역 결과가 여기에 표시됩니다.</div>
+      <div id="detailContent" class="detail-content hidden">
+        <div class="block-id" id="selectedId"></div>
+        <img id="cropImage" class="crop-image" alt="Selected PDF crop" />
+        <h3>원문</h3>
+        <div id="sourceText" class="text-box"></div>
+        <button id="translateBtn" type="button" class="primary-button">선택 영역 번역</button>
+        <h3>번역</h3>
+        <div id="translationText" class="text-box translated"></div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/static/app.js" type="module"></script>
+</body>
+</html>

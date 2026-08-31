@@ -1,0 +1,20 @@
+[project]
+name = "patra-mineru-pipeline"
+version = "0.1.0"
+description = "MinerU-to-LLM payload preparation and PDF reconstruction prototype."
+requires-python = ">=3.10"
+dependencies = ["PyMuPDF>=1.28.0", "fastapi", "uvicorn", "python-multipart", "mineru[all]", "vllm"]
+
+[project.scripts]
+patra-mineru = "patra_mineru.cli:main"
+patra-mineru-web = "patra_mineru.web_app:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+patra_mineru = ["web/*.html", "web/*.css", "web/*.js"]

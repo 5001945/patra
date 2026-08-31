@@ -1,0 +1,22 @@
+conda create -n patra python=3.13
+conda activate patra
+uv pip install -e ./patra_mineru_pipeline
+uv pip install "fastapi>=0.115,<0.137"
+uv pip install pdftext "pypdfium2>=4.30.0,<5.0.0"
+
+
+
+
+# Local GPU. --device auto lets MinerU pick CUDA; use cuda:N to pin one card.
+# patra-mineru parse --pdf "$INPUT_PDF" --output-dir "$MINERU_OUTPUT_DIR" --backend pipeline --method auto --lang en --device auto
+
+# Higher accuracy locally, needs more VRAM:
+# patra-mineru parse --pdf "$INPUT_PDF" --output-dir "$MINERU_OUTPUT_DIR" --backend hybrid-engine --effort high --device auto
+
+# Against a running MinerU VLM inference server (layout work stays local):
+# 다른 창에서 mineru-openai-server --engine vllm --model opendatalab/MinerU2.5-Pro-2605-1.2B --served-model-name "mineru" --port 50020 --gpu-memory-utilization 0.35
+patra-mineru parse --pdf "$INPUT_PDF" --output-dir "$MINERU_OUTPUT_DIR" --backend vlm-http-client --server-url http://127.0.0.1:50020 --lang en
+
+# Against a running mineru-api service (it does the whole parse):
+#   server: mineru-api --host 0.0.0.0 --port 8010   # not 8000, vLLM uses that below
+# patra-mineru parse --pdf "$INPUT_PDF" --output-dir "$MINERU_OUTPUT_DIR" --api-url http://127.0.0.1:8010 --backend pipeline --lang en
